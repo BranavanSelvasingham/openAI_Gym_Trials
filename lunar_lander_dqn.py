@@ -11,7 +11,9 @@
 
 
 import gym
+import os
 import random
+import keras
 from keras import Sequential
 from collections import deque
 from keras.layers import Dense
@@ -40,7 +42,12 @@ class DQN:
         self.lr = 0.001
         self.epsilon_decay = .996
         self.memory = deque(maxlen=1000000)
-        self.model = self.build_model()
+
+        if os.path.isfile('latest_model.h5'):
+            print("loading existing model")
+            self.model = keras.models.load_model('latest_model.h5')
+        else:
+            self.model = self.build_model()
 
     def build_model(self):
 
@@ -113,6 +120,7 @@ def train_dqn(episode):
         is_solved = np.mean(loss[-100:])
         if is_solved > 200:
             print('\n Task Completed! \n')
+            agent.model.save('latest_model.h5')
             break
         print("Average over last 100 episode: {0:.2f} \n".format(is_solved))
     return loss
@@ -122,7 +130,7 @@ if __name__ == '__main__':
 
     print(env.observation_space)
     print(env.action_space)
-    episodes = 3
+    episodes = 50
     loss = train_dqn(episodes)
     plt.plot([i+1 for i in range(0, len(loss), 2)], loss[::2])
     plt.show()
