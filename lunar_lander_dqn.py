@@ -51,15 +51,18 @@ class DQN:
             self.model = keras.models.load_model('latest_model.h5')
         else:
             self.model = self.build_model()
+        
+        print(self.model.summary())
 
         self.tensorboard_callback = ModifiedTensorBoard(log_dir="./logs/tensorboard_trials")
 
 
     def build_model(self):
+        print("building model")
 
         model = Sequential()
-        model.add(Dense(150, input_dim=self.state_space, activation=relu))
-        model.add(Dense(120, activation=relu))
+        model.add(Dense(200, input_dim=self.state_space, activation=relu))
+        model.add(Dense(150, activation=relu))
         # model.add(Dense(50, activation=relu))
         model.add(Dense(self.action_space, activation=linear))
         model.compile(loss='mse', optimizer=Adam(lr=self.lr))
@@ -137,7 +140,7 @@ def train_dqn(episode):
             break
         print("Average over last 100 episode: {0:.2f} \n".format(is_solved))
     
-    agent.model.save('latest_model.h5')
+    agent.model.save('latest_model')
     return loss
 
 
@@ -147,5 +150,3 @@ if __name__ == '__main__':
     print(env.action_space)
     episodes = 200
     loss = train_dqn(episodes)
-    plt.plot([i+1 for i in range(0, len(loss), 2)], loss[::2])
-    plt.show()
