@@ -14,12 +14,15 @@ import gym
 import os
 import random
 import keras
+import tensorflow as tf
+import time
 from keras import Sequential
 from collections import deque
 from keras.layers import Dense
 from keras.optimizers import Adam
 import matplotlib.pyplot as plt
 from keras.activations import relu, linear
+from modified_tensorboard import ModifiedTensorBoard
 
 import numpy as np
 env = gym.make('LunarLander-v2', render_mode="human")
@@ -49,11 +52,15 @@ class DQN:
         else:
             self.model = self.build_model()
 
+        self.tensorboard_callback = ModifiedTensorBoard(log_dir="./logs/tensorboard_trials")
+
+
     def build_model(self):
 
         model = Sequential()
         model.add(Dense(150, input_dim=self.state_space, activation=relu))
         model.add(Dense(120, activation=relu))
+        # model.add(Dense(50, activation=relu))
         model.add(Dense(self.action_space, activation=linear))
         model.compile(loss='mse', optimizer=Adam(lr=self.lr))
         return model
@@ -88,7 +95,7 @@ class DQN:
         ind = np.array([i for i in range(self.batch_size)])
         targets_full[[ind], [actions]] = targets
 
-        self.model.fit(states, targets_full, epochs=1, verbose=0)
+        self.model.fit(states, targets_full, epochs=1, verbose=0, callbacks=[self.tensorboard_callback])
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
 
@@ -98,31 +105,39 @@ def train_dqn(episode):
     loss = []
     agent = DQN(env.action_space.n, env.observation_space.shape[0])
     for e in range(episode):
+        agent.tensorboard_callback.step = e
         observation, info = env.reset()
         state = np.reshape(observation, (1, 8))
         score = 0
-        max_steps = 3000
+        max_steps = 1000
         for i in range(max_steps):
             action = agent.act(state)
             env.render()
             next_state, reward, done, truncated, info = env.step(action)
+            # reward -= 0.1*i
             score += reward
             next_state = np.reshape(next_state, (1, 8))
             agent.remember(state, action, reward, next_state, done)
             state = next_state
             agent.replay()
+            tf.summary.scalar(name = "reward", data = reward, step = i)
             if done:
                 print("episode: {}/{}, score: {}".format(e, episode, score))
                 break
+
         loss.append(score)
+        agent.tensorboard_callback.update_stats(score=score)
+
 
         # Average score of last 100 episode
         is_solved = np.mean(loss[-100:])
         if is_solved > 200:
             print('\n Task Completed! \n')
-            agent.model.save('latest_model.h5')
+            
             break
         print("Average over last 100 episode: {0:.2f} \n".format(is_solved))
+    
+    agent.model.save('latest_model.h5')
     return loss
 
 
@@ -130,7 +145,7 @@ if __name__ == '__main__':
 
     print(env.observation_space)
     print(env.action_space)
-    episodes = 50
+    episodes = 200
     loss = train_dqn(episodes)
     plt.plot([i+1 for i in range(0, len(loss), 2)], loss[::2])
     plt.show()
