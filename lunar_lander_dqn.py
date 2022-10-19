@@ -46,9 +46,9 @@ class DQN:
         self.epsilon_decay = .996
         self.memory = deque(maxlen=1000000)
 
-        if os.path.isfile('latest_model.h5'):
+        if os.path.isfile('./latest_model/saved_model.pb'):
             print("loading existing model")
-            self.model = keras.models.load_model('latest_model.h5')
+            self.model = keras.models.load_model('latest_model')
         else:
             self.model = self.build_model()
         
